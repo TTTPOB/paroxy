@@ -100,18 +100,25 @@ function fetchDomainList(domainUrl) {
 // 多用户 Token 管理
 const userTokens = new Map(); // { token: { expiry: timestamp } }
 
-// 清理过期 Token
+// Unblocker 客户端缓存
+const unblockerClients = new Map(); // { token: unblockerInstance }
+
+// 清理过期 Token 和对应的客户端
 setInterval(() => {
   const now = Date.now();
   let cleanedCount = 0;
   for (const [token, data] of userTokens.entries()) {
     if (now > data.expiry) {
       userTokens.delete(token);
+      // 同时清理对应的unblocker客户端
+      if (unblockerClients.has(token)) {
+        unblockerClients.delete(token);
+      }
       cleanedCount++;
     }
   }
   if (cleanedCount > 0) {
-    logger.token(`Cleaned ${cleanedCount} expired tokens`);
+    logger.token(`Cleaned ${cleanedCount} expired tokens and clients`);
   }
 }, 60000); // 每分钟清理一次
 
@@ -130,6 +137,25 @@ function isHostAllowed(hostname, allowlist) {
   return false;
 }
 
+// 获取或创建 unblocker 客户端
+function getUnblockerClient(token) {
+  if (!unblockerClients.has(token)) {
+    const unblocker = Unblocker({
+      prefix: `/${token}/fetch/`,
+      responseMiddleware: [
+        (data) => {
+          if (data.headers) {
+            data.headers['access-control-allow-origin'] = '*';
+          }
+        }
+      ]
+    });
+    unblockerClients.set(token, unblocker);
+    logger.debug(`Created new unblocker client for token: ${token.substring(0, 8)}...`);
+  }
+  return unblockerClients.get(token);
+}
+
 // 创建服务器
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
@@ -143,6 +169,7 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({ 
       status: 'ok', 
       active_tokens: userTokens.size,
+      cached_clients: unblockerClients.size,
       uptime: process.uptime()
     }));
   }
@@ -208,17 +235,8 @@ const server = http.createServer((req, res) => {
       return res.end('Forbidden: Invalid or expired token');
     }
     
-    // 为本次请求动态创建unblocker实例，确保后续链接都带有正确的token
-    const unblocker = Unblocker({
-      prefix: `/${token}/fetch/`,
-      responseMiddleware: [
-        (data) => {
-          if (data.headers) {
-            data.headers['access-control-allow-origin'] = '*';
-          }
-        }
-      ]
-    });
+    // 获取或创建该token对应的unblocker客户端
+    const unblocker = getUnblockerClient(token);
     
     // 检查目标URL是否在允许列表中
     // 注意：unblocker会处理URL的解析，我们只需要在初次请求时校验
@@ -269,6 +287,7 @@ const server = http.createServer((req, res) => {
     <h1>Webpage Reverse Proxy</h1>
     <p>Status: <strong>Running</strong></p>
     <p>Active tokens: <strong>${userTokens.size}</strong></p>
+    <p>Cached clients: <strong>${unblockerClients.size}</strong></p>
     
     <h2>API Endpoints</h2>
     

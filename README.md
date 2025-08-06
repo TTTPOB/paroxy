@@ -6,7 +6,7 @@
 
 ### 1. 安装依赖
 ```bash
-npm install
+pnpm install
 # 或者
 pnpm install
 ```
@@ -21,7 +21,7 @@ cp config.example.json config.json
 
 ### 3. 启动服务
 ```bash
-npm start
+pnpm start
 ```
 
 服务器将在 `http://localhost:8080` 启动。
@@ -70,9 +70,13 @@ GET /<TOKEN>/fetch/<TARGET_URL>
    curl "http://localhost:8080/<TOKEN>/fetch/https://dl.acm.org/doi/10.1145/example"
    ```
 
-3. **在 ChatGPT 中使用**：
+3. **暴露到公网**:
+   可考虑使用cloudflare tunnel等工具。
+
+4. **在 ChatGPT 中使用**：
+   加个提示词
    ```
-   请通过代理访问：http://localhost:8080/<TOKEN>/fetch/https://www.nature.com/articles/example
+   需要访问学术文章时请使用这个代理: http://<exposed-service-url>/<TOKEN>/fetch/${orignal_article_url}
    ```
 
 ## 安全特性
@@ -91,13 +95,6 @@ GET /<TOKEN>/fetch/<TARGET_URL>
 - 定期更新依赖包以确保安全性
 
 ## 故障排除
-
-### 常见错误
-
-1. **`config.json not found`**: 请先复制 `config.example.json` 到 `config.json`
-2. **`admin_token` 默认值**: 请修改配置文件中的 admin_token
-3. **端口被占用**: 修改配置文件中的 port 值
-4. **域名被拒绝**: 检查目标域名是否在 `host_allowlist` 中
 
 ### 查看日志
 
@@ -129,3 +126,7 @@ GET /<TOKEN>/fetch/<TARGET_URL>
 ## 许可证
 
 MIT License
+
+
+## Note
+design doc是早期vibe coding留着的，放在仓库里仅供参考，与实际的实现不完全一致。

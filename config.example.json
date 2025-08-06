@@ -1,0 +1,22 @@
+{
+  "admin_token": ["your-secure-admin-token-1-here", "your-secure-admin-token-2-here"],
+  "port": 8080,
+  "default_ttl": 7200,
+  "domain_allowlist_url": "https://gitlab.com/-/snippets/3623446/raw/main/domains.txt?inline=false",
+  "host_allowlist": [
+    "*.acm.org",
+    "*.springer.com",
+    "*.ieee.org",
+    "*.nature.com",
+    "*.sciencedirect.com",
+    "*.wiley.com",
+    "*.tandfonline.com",
+    "*.jstor.org"
+  ],
+  "direct_hosts": [
+    "cdn.springer.com",
+    "static.ieee.org",
+    "assets.nature.com",
+    "static.sciencedirect.com"
+  ]
+}

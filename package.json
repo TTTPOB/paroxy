@@ -1,0 +1,20 @@
+{
+  "name": "webpage-reverse-proxy",
+  "version": "1.0.0",
+  "description": "A node-unblocker based reverse proxy for accessing academic resources via ChatGPT agents",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js",
+    "dev": "node proxy.js"
+  },
+  "keywords": ["proxy", "unblocker", "academic", "reverse-proxy"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "unblocker": "^2.2.0",
+    "morgan": "^1.10.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

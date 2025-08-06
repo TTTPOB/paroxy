@@ -27,6 +27,18 @@ if (!cfg.admin_token || !Array.isArray(cfg.admin_token) || cfg.admin_token.lengt
   process.exit(1);
 }
 
+// 验证至少有一个域名允许列表源
+const hasHostAllowlist = cfg.host_allowlist && Array.isArray(cfg.host_allowlist) && cfg.host_allowlist.length > 0;
+const hasDomainAllowlistUrl = cfg.domain_allowlist_url && typeof cfg.domain_allowlist_url === 'string' && cfg.domain_allowlist_url.trim() !== '';
+
+if (!hasHostAllowlist && !hasDomainAllowlistUrl) {
+  logger.error('Invalid config.json format');
+  logger.error('At least one of the following must be configured:');
+  logger.error('- host_allowlist: non-empty array of allowed domains/patterns');
+  logger.error('- domain_allowlist_url: valid URL to fetch domain list from');
+  process.exit(1);
+}
+
 // 初始化 host_allowlist
 if (!cfg.host_allowlist || !Array.isArray(cfg.host_allowlist)) {
   cfg.host_allowlist = [];

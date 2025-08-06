@@ -4,25 +4,26 @@ const url = require('url');
 const fs = require('fs');
 const crypto = require('crypto');
 const Unblocker = require('unblocker');
+const logger = require('./logger');
 
 // 加载和验证配置
 let cfg;
 try {
   if (!fs.existsSync('config.json')) {
-    console.error('ERROR: config.json not found');
-    console.error('Please copy config.example.json to config.json and configure it');
+    logger.error('config.json not found');
+    logger.error('Please copy config.example.json to config.json and configure it');
     process.exit(1);
   }
   cfg = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 } catch (error) {
-  console.error('ERROR: Failed to load config.json:', error.message);
+  logger.error('Failed to load config.json:', error.message);
   process.exit(1);
 }
 
 // 验证必要配置
 if (!cfg.admin_token || !Array.isArray(cfg.admin_token) || cfg.admin_token.length === 0) {
-  console.error('ERROR: Invalid config.json format');
-  console.error('Required fields: admin_token (must be a non-empty array)');
+  logger.error('Invalid config.json format');
+  logger.error('Required fields: admin_token (must be a non-empty array)');
   process.exit(1);
 }
 
@@ -31,11 +32,17 @@ if (!cfg.host_allowlist || !Array.isArray(cfg.host_allowlist)) {
   cfg.host_allowlist = [];
 }
 
+// 配置日志级别
+if (cfg.log_level) {
+  logger.setLevel(cfg.log_level);
+  logger.debug(`Log level set to: ${cfg.log_level}`);
+}
+
 // 安全检查：确保管理员token不是默认值
 if (cfg.admin_token.includes('your-secure-admin-token-here') || 
     cfg.admin_token.includes('your-secure-admin-token-1-here') ||
     cfg.admin_token.includes('your-secure-admin-token-2-here')) {
-  console.error('ERROR: Please change the admin_token in config.json from the default values');
+  logger.error('Please change the admin_token in config.json from the default values');
   process.exit(1);
 }
 
@@ -43,7 +50,7 @@ if (cfg.admin_token.includes('your-secure-admin-token-here') ||
 async function loadDomainAllowlist() {
   if (cfg.domain_allowlist_url) {
     try {
-      console.log('Loading domain allowlist from:', cfg.domain_allowlist_url);
+      logger.info('Loading domain allowlist from:', cfg.domain_allowlist_url);
       const domains = await fetchDomainList(cfg.domain_allowlist_url);
       // 将以点开头的域名转换为通配符格式，并添加到 host_allowlist
       domains.forEach(domain => {
@@ -56,10 +63,10 @@ async function loadDomainAllowlist() {
           cfg.host_allowlist.push(domain);
         }
       });
-      console.log(`Added ${domains.length} domains to allowlist. Total: ${cfg.host_allowlist.length}`);
+      logger.success(`Added ${domains.length} domains to allowlist. Total: ${cfg.host_allowlist.length}`);
     } catch (error) {
-      console.warn('Failed to load domain allowlist:', error.message);
-      console.log('Continuing with config-only allowlist');
+      logger.warn('Failed to load domain allowlist:', error.message);
+      logger.info('Continuing with config-only allowlist');
     }
   }
 }
@@ -104,7 +111,7 @@ setInterval(() => {
     }
   }
   if (cleanedCount > 0) {
-    console.log(`Cleaned ${cleanedCount} expired tokens`);
+    logger.token(`Cleaned ${cleanedCount} expired tokens`);
   }
 }, 60000); // 每分钟清理一次
 
@@ -128,7 +135,7 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   
-  console.log(`${new Date().toISOString()} ${req.method} ${pathname} - ${req.headers['user-agent'] || 'Unknown'}`);
+  logger.request(req.method, pathname, req.headers['user-agent'] || 'Unknown');
   
   // 健康检查接口
   if (pathname === '/health') {
@@ -154,7 +161,7 @@ const server = http.createServer((req, res) => {
     
     userTokens.set(token, { expiry });
     
-    console.log(`Generated token: ${token} (expires in ${ttl}s)`);
+    logger.token(`Generated token: ${token} (expires in ${ttl}s)`);
     
     res.writeHead(200, {'Content-Type': 'application/json'});
     return res.end(JSON.stringify({ 
@@ -224,7 +231,7 @@ const server = http.createServer((req, res) => {
     try {
       const targetHost = new URL(targetUrl).hostname;
       if (!isHostAllowed(targetHost, cfg.host_allowlist)) {
-        console.warn(`Redirecting unauthorized host to original URL: ${targetHost} -> ${targetUrl}`);
+        logger.security(`Redirecting unauthorized host: ${targetHost} -> ${targetUrl}`);
         res.writeHead(302, {
           'Location': targetUrl,
           'Content-Type': 'text/plain'
@@ -232,11 +239,11 @@ const server = http.createServer((req, res) => {
         return res.end(`Redirecting to: ${targetUrl}`);
       }
       
-      console.log(`Proxying initial request to: ${targetUrl}`);
+      logger.proxy(`Proxying initial request to: ${targetUrl}`);
       return unblocker(req, res);
 
     } catch (urlError) {
-      console.error(`Invalid URL: ${targetUrl}`, urlError.message);
+      logger.error(`Invalid URL: ${targetUrl}`, urlError.message);
       res.writeHead(400, {'Content-Type': 'text/plain'});
       return res.end('Bad Request: Invalid URL');
     }
@@ -323,22 +330,22 @@ const server = http.createServer((req, res) => {
 
 // 错误处理
 server.on('error', (err) => {
-  console.error('Server error:', err);
+  logger.error('Server error:', err);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  logger.error('Uncaught Exception:', err);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 // 优雅关闭
 process.on('SIGINT', () => {
-  console.log('\nReceived SIGINT, shutting down gracefully...');
+  logger.info('Received SIGINT, shutting down gracefully...');
   server.close(() => {
-    console.log('Server closed');
+    logger.info('Server closed');
     process.exit(0);
   });
 });
@@ -352,21 +359,20 @@ async function startServer() {
   await loadDomainAllowlist();
 
   server.listen(PORT, HOST, () => {
-    console.log(`🚀 Proxy server running on http://${HOST}:${PORT}`);
-    console.log(`📋 Admin tokens: ${cfg.admin_token.join(', ')}`);
-    console.log(`⏰ Default token TTL: ${cfg.default_ttl}s`);
-    console.log(`🛡️  Allowed hosts: ${cfg.host_allowlist.length} patterns`);
-    console.log(`📊 Health check: http://${HOST}:${PORT}/health`);
-    console.log(`📝 Web UI: http://${HOST}:${PORT}/`);
+    logger.server(`Proxy server running on http://${HOST}:${PORT}`);
+    logger.server(`Admin tokens: ${cfg.admin_token.join(', ')}`);
+    logger.server(`Default token TTL: ${cfg.default_ttl}s`);
+    logger.server(`Allowed hosts: ${cfg.host_allowlist.length} patterns`);
+    logger.server(`Health check: http://${HOST}:${PORT}/health`);
+    logger.server(`Web UI: http://${HOST}:${PORT}/`);
     if (cfg.domain_allowlist_url) {
-      console.log(`🌐 Domain list URL: ${cfg.domain_allowlist_url}`);
+      logger.server(`Domain list URL: ${cfg.domain_allowlist_url}`);
     }
-    console.log('');
-    console.log('Press Ctrl+C to stop the server');
+    logger.info('Press Ctrl+C to stop the server');
   });
 }
 
 startServer().catch(error => {
-  console.error('Failed to start server:', error);
+  logger.error('Failed to start server:', error);
   process.exit(1);
 });

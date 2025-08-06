@@ -2,6 +2,7 @@
   "admin_token": ["your-secure-admin-token-1-here", "your-secure-admin-token-2-here"],
   "port": 8080,
   "default_ttl": 7200,
+  "log_level": "INFO",
   "domain_allowlist_url": "https://gitlab.com/-/snippets/3623446/raw/main/domains.txt?inline=false",
   "host_allowlist": [
     "*.acm.org",

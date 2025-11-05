@@ -43,6 +43,12 @@ pnpm start
 GET /health
 ```
 
+### 管理界面
+```
+GET /admin?admin_token=<ADMIN_TOKEN>
+```
+提供网页界面，可以通过浏览器生成令牌和复制提示词模板。
+
 ### 生成访问令牌
 ```
 GET /admin/token?admin_token=<ADMIN_TOKEN>&expires_after=<SECONDS>
@@ -73,8 +79,14 @@ GET /<TOKEN>/fetch/<TARGET_URL>
 3. **暴露到公网**:
    可考虑使用cloudflare tunnel等工具。
 
-4. **在 ChatGPT 中使用**：
-   加个提示词
+4. **使用管理界面**：
+   访问 `http://localhost:8080/admin?admin_token=<你的管理员令牌>` 打开网页管理界面，可以：
+   - 生成新的访问令牌
+   - 查看活跃令牌列表
+   - 生成和复制提示词模板
+
+5. **在 ChatGPT 中使用**：
+   使用管理界面生成的提示词模板，或手动添加：
    ```
    需要访问学术文章时请使用这个代理: http://<exposed-service-url>/<TOKEN>/fetch/${orignal_article_url}
    ```

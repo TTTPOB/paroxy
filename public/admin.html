@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代理管理界面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #1d1d1f;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            color: #6e6e73;
+        }
+        
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #1d1d1f;
+            border-bottom: 1px solid #d2d2d7;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+        }
+        
+        button {
+            background-color: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #a1a1a6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f2f2f7;
+            border-radius: 8px;
+            border-left: 4px solid #007aff;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+        }
+        
+        .result h3 {
+            margin-bottom: 10px;
+            color: #1d1d1f;
+        }
+        
+        .result p {
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        
+        .copy-btn {
+            background-color: #34c759;
+            font-size: 0.9rem;
+            padding: 8px 15px;
+            margin-top: 10px;
+        }
+        
+        .copy-btn:hover {
+            background-color: #30a14e;
+        }
+        
+        .copy-btn.copied {
+            background-color: #30d158;
+        }
+        
+        .token-list {
+            margin-top: 20px;
+        }
+        
+        .token-item {
+            padding: 15px;
+            background-color: #f2f2f7;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .token-info {
+            flex-grow: 1;
+        }
+        
+        .token-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .danger-btn {
+            background-color: #ff3b30;
+        }
+        
+        .danger-btn:hover {
+            background-color: #d70015;
+        }
+        
+        .secondary-btn {
+            background-color: #8e8e93;
+        }
+        
+        .secondary-btn:hover {
+            background-color: #636366;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background-color: #34c759;
+        }
+        
+        .status-expired {
+            background-color: #ff3b30;
+        }
+        
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+        
+        .login-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .login-card h2 {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .error-message {
+            color: #ff3b30;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: rgba(255, 59, 48, 0.1);
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #d2d2d7;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom-color: #007aff;
+            color: #007aff;
+            font-weight: 500;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .prompt-template {
+            background-color: #f2f2f7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #007aff;
+        }
+        
+        .prompt-template h4 {
+            margin-bottom: 10px;
+        }
+        
+        .prompt-template p {
+            font-style: italic;
+            color: #6e6e73;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录界面 -->
+        <div id="login-view" class="login-container">
+            <div class="login-card">
+                <h2>管理员登录</h2>
+                <div class="form-group">
+                    <label for="admin-token">管理员令牌</label>
+                    <input type="password" id="admin-token" placeholder="请输入管理员令牌">
+                </div>
+                <button id="login-btn">登录</button>
+                <div id="login-error" class="error-message">令牌无效，请重试</div>
+            </div>
+        </div>
+        
+        <!-- 主界面 -->
+        <div id="main-view" style="display: none;">
+            <div class="container">
+                <div class="header">
+                    <h1>代理管理界面</h1>
+                    <p>生成访问令牌和管理代理服务</p>
+                    <button id="logout-btn" class="secondary-btn" style="margin-top: 15px;">退出登录</button>
+                </div>
+                
+                <div class="tabs">
+                    <div class="tab active" data-tab="generate">生成令牌</div>
+                    <div class="tab" data-tab="manage">管理令牌</div>
+                    <div class="tab" data-tab="prompt">提示词模板</div>
+                </div>
+                
+                <!-- 生成令牌标签页 -->
+                <div id="generate-tab" class="tab-content active">
+                    <div class="card">
+                        <h2>生成新的访问令牌</h2>
+                        <div class="form-group">
+                            <label for="token-ttl">令牌有效期（秒）</label>
+                            <select id="token-ttl">
+                                <option value="1800">30分钟</option>
+                                <option value="3600" selected>1小时</option>
+                                <option value="7200">2小时</option>
+                                <option value="14400">4小时</option>
+                                <option value="28800">8小时</option>
+                                <option value="86400">24小时</option>
+                                <option value="604800">7天</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-url">服务器地址</label>
+                            <input type="text" id="server-url" value="http://localhost:8080" placeholder="http://your-server.com">
+                        </div>
+                        <button id="generate-token-btn">生成令牌</button>
+                        
+                        <div id="token-result" class="result">
+                            <h3>令牌已生成</h3>
+                            <p><strong>令牌:</strong> <span id="generated-token"></span></p>
+                            <p><strong>有效期:</strong> <span id="token-expiry"></span></p>
+                            <p><strong>代理地址:</strong> <span id="proxy-url"></span></p>
+                            <button id="copy-token-btn" class="copy-btn">复制令牌</button>
+                            <button id="copy-proxy-btn" class="copy-btn">复制代理地址</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 管理令牌标签页 -->
+                <div id="manage-tab" class="tab-content">
+                    <div class="card">
+                        <h2>活跃令牌列表</h2>
+                        <button id="refresh-tokens-btn">刷新列表</button>
+                        <div id="token-list" class="token-list">
+                            <p>加载中...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 提示词模板标签页 -->
+                <div id="prompt-tab" class="tab-content">
+                    <div class="card">
+                        <h2>提示词模板</h2>
+                        <div class="form-group">
+                            <label for="prompt-token">令牌</label>
+                            <input type="text" id="prompt-token" placeholder="输入或生成一个令牌">
+                        </div>
+                        <div class="form-group">
+                            <label for="prompt-server">服务器地址</label>
+                            <input type="text" id="prompt-server" value="http://localhost:8080" placeholder="http://your-server.com">
+                        </div>
+                        <button id="generate-prompt-btn">生成提示词</button>
+                        
+                        <div id="prompt-result" class="result">
+                            <h3>提示词已生成</h3>
+                            <div class="prompt-template">
+                                <h4>基础提示词</h4>
+                                <p>当你需要访问学术文章或网页内容时，请使用以下代理地址：</p>
+                                <p id="basic-prompt"></p>
+                                <button id="copy-basic-prompt-btn" class="copy-btn">复制基础提示词</button>
+                            </div>
+                            
+                            <div class="prompt-template">
+                                <h4>详细提示词</h4>
+                                <p>包含更详细说明的提示词：</p>
+                                <p id="detailed-prompt"></p>
+                                <button id="copy-detailed-prompt-btn" class="copy-btn">复制详细提示词</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 应用状态
+        const app = {
+            adminToken: localStorage.getItem('adminToken') || '',
+            serverUrl: 'http://localhost:8080',
+            currentToken: '',
+            tokens: []
+        };
+        
+        // DOM 元素
+        const elements = {
+            // 登录相关
+            loginView: document.getElementById('login-view'),
+            mainView: document.getElementById('main-view'),
+            adminTokenInput: document.getElementById('admin-token'),
+            loginBtn: document.getElementById('login-btn'),
+            loginError: document.getElementById('login-error'),
+            logoutBtn: document.getElementById('logout-btn'),
+            
+            // 标签页相关
+            tabs: document.querySelectorAll('.tab'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            
+            // 生成令牌相关
+            tokenTtl: document.getElementById('token-ttl'),
+            serverUrlInput: document.getElementById('server-url'),
+            generateTokenBtn: document.getElementById('generate-token-btn'),
+            tokenResult: document.getElementById('token-result'),
+            generatedToken: document.getElementById('generated-token'),
+            tokenExpiry: document.getElementById('token-expiry'),
+            proxyUrl: document.getElementById('proxy-url'),
+            copyTokenBtn: document.getElementById('copy-token-btn'),
+            copyProxyBtn: document.getElementById('copy-proxy-btn'),
+            
+            // 管理令牌相关
+            refreshTokensBtn: document.getElementById('refresh-tokens-btn'),
+            tokenList: document.getElementById('token-list'),
+            
+            // 提示词相关
+            promptToken: document.getElementById('prompt-token'),
+            promptServer: document.getElementById('prompt-server'),
+            generatePromptBtn: document.getElementById('generate-prompt-btn'),
+            promptResult: document.getElementById('prompt-result'),
+            basicPrompt: document.getElementById('basic-prompt'),
+            detailedPrompt: document.getElementById('detailed-prompt'),
+            copyBasicPromptBtn: document.getElementById('copy-basic-prompt-btn'),
+            copyDetailedPromptBtn: document.getElementById('copy-detailed-prompt-btn')
+        };
+        
+        // 初始化应用
+        function init() {
+            // 先绑定所有事件
+            bindEvents();
+            
+            // 检查是否有服务器注入的admin token
+            if (window.adminToken) {
+                app.adminToken = window.adminToken;
+                app.serverUrl = window.serverUrl || 'http://localhost:8080';
+                
+                // 更新表单中的服务器地址
+                elements.serverUrlInput.value = app.serverUrl;
+                elements.promptServer.value = app.serverUrl;
+                
+                showMainView();
+                loadTokens();
+                return;
+            }
+            
+            // 如果本地存储中有管理员令牌，尝试直接进入主界面
+            if (app.adminToken) {
+                checkAdminToken(app.adminToken);
+            }
+        }
+        
+        // 绑定所有事件
+        function bindEvents() {
+            elements.loginBtn.addEventListener('click', login);
+            elements.logoutBtn.addEventListener('click', logout);
+            elements.generateTokenBtn.addEventListener('click', generateToken);
+            elements.refreshTokensBtn.addEventListener('click', loadTokens);
+            elements.generatePromptBtn.addEventListener('click', generatePrompt);
+            elements.copyTokenBtn.addEventListener('click', () => copyToClipboard(elements.generatedToken.textContent));
+            elements.copyProxyBtn.addEventListener('click', () => copyToClipboard(elements.proxyUrl.textContent));
+            elements.copyBasicPromptBtn.addEventListener('click', () => copyToClipboard(elements.basicPrompt.textContent));
+            elements.copyDetailedPromptBtn.addEventListener('click', () => copyToClipboard(elements.detailedPrompt.textContent));
+            
+            // 标签页切换
+            elements.tabs.forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+            
+            // 回车键登录
+            elements.adminTokenInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+        }
+        
+        // 登录
+        function login() {
+            const token = elements.adminTokenInput.value.trim();
+            if (!token) {
+                showLoginError('请输入管理员令牌');
+                return;
+            }
+            
+            checkAdminToken(token);
+        }
+        
+        // 检查管理员令牌
+        function checkAdminToken(token) {
+            console.log('Checking admin token with URL:', `${app.serverUrl}/admin/tokens?admin_token=${token}`);
+            
+            fetch(`${app.serverUrl}/admin/tokens?admin_token=${token}`)
+                .then(response => {
+                    console.log('Token check response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Token check data:', data);
+                    app.adminToken = token;
+                    localStorage.setItem('adminToken', token);
+                    showMainView();
+                    loadTokens();
+                })
+                .catch(error => {
+                    console.error('Error checking admin token:', error);
+                    showLoginError('令牌无效，请重试');
+                });
+        }
+        
+        // 显示登录错误
+        function showLoginError(message) {
+            elements.loginError.textContent = message;
+            elements.loginError.classList.add('show');
+            setTimeout(() => {
+                elements.loginError.classList.remove('show');
+            }, 3000);
+        }
+        
+        // 显示主界面
+        function showMainView() {
+            elements.loginView.style.display = 'none';
+            elements.mainView.style.display = 'block';
+        }
+        
+        // 退出登录
+        function logout() {
+            app.adminToken = '';
+            localStorage.removeItem('adminToken');
+            elements.loginView.style.display = 'block';
+            elements.mainView.style.display = 'none';
+            elements.adminTokenInput.value = '';
+        }
+        
+        // 切换标签页
+        function switchTab(tabName) {
+            elements.tabs.forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.tab === tabName) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            elements.tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === `${tabName}-tab`) {
+                    content.classList.add('active');
+                }
+            });
+        }
+        
+        // 生成令牌
+        function generateToken() {
+            const ttl = elements.tokenTtl.value;
+            const serverUrl = elements.serverUrlInput.value.trim();
+            
+            if (!serverUrl) {
+                alert('请输入服务器地址');
+                return;
+            }
+            
+            app.serverUrl = serverUrl;
+            
+            elements.generateTokenBtn.disabled = true;
+            elements.generateTokenBtn.textContent = '生成中...';
+            
+            console.log('Generating token with URL:', `${serverUrl}/admin/token?admin_token=${app.adminToken}&expires_after=${ttl}`);
+            
+            fetch(`${serverUrl}/admin/token?admin_token=${app.adminToken}&expires_after=${ttl}`)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Token data received:', data);
+                    app.currentToken = data.token;
+                    const expiryDate = new Date(data.expires_at);
+                    
+                    elements.generatedToken.textContent = data.token;
+                    elements.tokenExpiry.textContent = expiryDate.toLocaleString();
+                    elements.proxyUrl.textContent = `${serverUrl}/${data.token}/fetch/URL`;
+                    elements.tokenResult.classList.add('show');
+                    
+                    // 同时更新提示词页面的令牌
+                    elements.promptToken.value = data.token;
+                    elements.promptServer.value = serverUrl;
+                })
+                .catch(error => {
+                    console.error('Error generating token:', error);
+                    alert(`生成令牌失败: ${error.message}`);
+                })
+                .finally(() => {
+                    elements.generateTokenBtn.disabled = false;
+                    elements.generateTokenBtn.textContent = '生成令牌';
+                });
+        }
+        
+        // 加载令牌列表
+        function loadTokens() {
+            elements.refreshTokensBtn.disabled = true;
+            elements.refreshTokensBtn.textContent = '加载中...';
+            elements.tokenList.innerHTML = '<p>加载中...</p>';
+            
+            console.log('Loading tokens with URL:', `${app.serverUrl}/admin/tokens?admin_token=${app.adminToken}`);
+            
+            fetch(`${app.serverUrl}/admin/tokens?admin_token=${app.adminToken}`)
+                .then(response => {
+                    console.log('Load tokens response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Tokens data:', data);
+                    app.tokens = data.tokens;
+                    renderTokenList();
+                })
+                .catch(error => {
+                    console.error('Error loading tokens:', error);
+                    elements.tokenList.innerHTML = `<p>加载令牌列表失败: ${error.message}</p>`;
+                })
+                .finally(() => {
+                    elements.refreshTokensBtn.disabled = false;
+                    elements.refreshTokensBtn.textContent = '刷新列表';
+                });
+        }
+        
+        // 渲染令牌列表
+        function renderTokenList() {
+            if (app.tokens.length === 0) {
+                elements.tokenList.innerHTML = '<p>当前没有活跃的令牌</p>';
+                return;
+            }
+            
+            elements.tokenList.innerHTML = app.tokens.map(token => {
+                const isActive = token.expires_in > 0;
+                const statusClass = isActive ? 'status-active' : 'status-expired';
+                const statusText = isActive ? '活跃' : '已过期';
+                const proxyUrl = `${app.serverUrl}/${token.token}/fetch/URL`;
+                
+                const tokenItem = document.createElement('div');
+                tokenItem.className = 'token-item';
+                tokenItem.innerHTML = `
+                    <div class="token-info">
+                        <div>
+                            <span class="status-indicator ${statusClass}"></span>
+                            <strong>${token.token}</strong>
+                        </div>
+                        <div>过期时间: ${token.expires_at}</div>
+                        <div>剩余时间: ${formatTime(token.expires_in)}</div>
+                    </div>
+                    <div class="token-actions">
+                        <button class="copy-btn" data-copy-text="${proxyUrl}">复制代理地址</button>
+                    </div>
+                `;
+                
+                // 为复制按钮添加事件监听器
+                const copyBtn = tokenItem.querySelector('.copy-btn');
+                copyBtn.addEventListener('click', () => copyToClipboard(proxyUrl));
+                
+                return tokenItem.outerHTML;
+            }).join('');
+        }
+        
+        // 格式化时间
+        function formatTime(seconds) {
+            if (seconds <= 0) return '已过期';
+            
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) return `${days}天 ${hours}小时`;
+            if (hours > 0) return `${hours}小时 ${minutes}分钟`;
+            return `${minutes}分钟`;
+        }
+        
+        // 生成提示词
+        function generatePrompt() {
+            const token = elements.promptToken.value.trim();
+            const serverUrl = elements.promptServer.value.trim();
+            
+            if (!token) {
+                alert('请输入令牌');
+                return;
+            }
+            
+            if (!serverUrl) {
+                alert('请输入服务器地址');
+                return;
+            }
+            
+            const proxyUrl = `${serverUrl}/${token}/fetch/`;
+            
+            elements.basicPrompt.textContent = `请使用以下代理地址访问学术文章: ${proxyUrl}{URL}`;
+            
+            elements.detailedPrompt.textContent = `当你需要访问学术文章、研究论文或任何受限网页内容时，请使用以下代理服务器：
+
+代理地址: ${proxyUrl}{URL}
+
+使用方法：
+1. 将 {URL} 替换为你要访问的实际网址
+2. 完整的访问地址将是: ${proxyUrl}https://example.com/article
+
+注意事项：
+- 此代理仅用于访问学术和研究内容
+- 请遵守目标网站的使用条款
+- 如果遇到访问问题，请检查URL是否正确
+
+示例：
+- 访问 Nature 文章: ${proxyUrl}https://www.nature.com/articles/example
+- 访问 ACM 论文: ${proxyUrl}https://dl.acm.org/doi/10.1145/example`;
+            
+            elements.promptResult.classList.add('show');
+        }
+        
+        // 复制到剪贴板
+        async function copyToClipboard(text) {
+            try {
+                // 使用现代的 Clipboard API
+                await navigator.clipboard.writeText(text);
+                
+                // 显示复制成功反馈
+                const event = new CustomEvent('copySuccess');
+                document.dispatchEvent(event);
+            } catch (err) {
+                // 如果现代API不可用，回退到旧方法
+                try {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed'; // 防止页面滚动
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    
+                    // 显示复制成功反馈
+                    const event = new CustomEvent('copySuccess');
+                    document.dispatchEvent(event);
+                } catch (fallbackErr) {
+                    console.error('复制失败:', fallbackErr);
+                    alert('复制失败，请手动复制文本');
+                }
+            }
+        }
+        
+        // 监听复制成功事件
+        document.addEventListener('copySuccess', (e) => {
+            const buttons = document.querySelectorAll('.copy-btn');
+            buttons.forEach(btn => {
+                if (btn === e.target || btn.contains(e.target)) {
+                    const originalText = btn.textContent;
+                    btn.textContent = '已复制!';
+                    btn.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }
+            });
+        });
+        
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>

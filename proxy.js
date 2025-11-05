@@ -178,19 +178,87 @@ const server = http.createServer((req, res) => {
   // 健康检查接口
   if (pathname === '/health') {
     res.writeHead(200, {'Content-Type': 'application/json'});
-    return res.end(JSON.stringify({ 
-      status: 'ok', 
+    return res.end(JSON.stringify({
+      status: 'ok',
       active_tokens: userTokens.size,
       cached_clients: unblockerClients.size,
       uptime: process.uptime()
     }));
   }
   
+  // 管理界面路由 - 需要admin token认证
+  if (pathname === '/admin' || pathname === '/admin/') {
+    const adminToken = req.headers['x-admin-token'] || parsedUrl.query.admin_token;
+    
+    // 如果没有提供admin token，显示登录页面
+    if (!adminToken) {
+      try {
+        const adminHtml = fs.readFileSync('./public/admin.html', 'utf8');
+        res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+        return res.end(adminHtml);
+      } catch (error) {
+        logger.error('Failed to read admin.html:', error.message);
+        res.writeHead(500, {'Content-Type': 'text/plain'});
+        return res.end('Internal Server Error');
+      }
+    }
+    
+    // 验证admin token
+    if (!cfg.admin_token.includes(adminToken)) {
+      res.writeHead(401, {'Content-Type': 'text/html; charset=utf-8'});
+      return res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>访问被拒绝</title>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+            .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 5px; }
+            a { color: #1976d2; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>访问被拒绝</h1>
+            <p>提供的管理员令牌无效。</p>
+            <p><a href="/admin">返回登录页面</a></p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+    
+    // 如果admin token有效，显示管理界面
+    try {
+      let adminHtml = fs.readFileSync('./public/admin.html', 'utf8');
+      // 在HTML中注入admin token，这样前端就不需要再次输入
+      adminHtml = adminHtml.replace(
+        '<script>',
+        `<script>
+          window.adminToken = '${adminToken}';
+          window.serverUrl = 'http://localhost:${cfg.port}';
+        `
+      );
+      res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+      return res.end(adminHtml);
+    } catch (error) {
+      logger.error('Failed to read admin.html:', error.message);
+      res.writeHead(500, {'Content-Type': 'text/plain'});
+      return res.end('Internal Server Error');
+    }
+  }
+  
   // 管理接口：生成 Token
   if (pathname === '/admin/token') {
     const adminToken = req.headers['x-admin-token'] || parsedUrl.query.admin_token;
     if (!cfg.admin_token.includes(adminToken)) {
-      res.writeHead(401, {'Content-Type': 'application/json'});
+      res.writeHead(401, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      });
       return res.end('{"error":"Unauthorized"}');
     }
     
@@ -202,9 +270,14 @@ const server = http.createServer((req, res) => {
     
     logger.token(`Generated token: ${token} (expires in ${ttl}s)`);
     
-    res.writeHead(200, {'Content-Type': 'application/json'});
-    return res.end(JSON.stringify({ 
-      token, 
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    });
+    return res.end(JSON.stringify({
+      token,
       expires_in: ttl,
       expires_at: new Date(expiry).toISOString()
     }));
@@ -214,7 +287,12 @@ const server = http.createServer((req, res) => {
   if (pathname === '/admin/tokens') {
     const adminToken = req.headers['x-admin-token'] || parsedUrl.query.admin_token;
     if (!cfg.admin_token.includes(adminToken)) {
-      res.writeHead(401, {'Content-Type': 'application/json'});
+      res.writeHead(401, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      });
       return res.end('{"error":"Unauthorized"}');
     }
     
@@ -228,7 +306,12 @@ const server = http.createServer((req, res) => {
       });
     }
     
-    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    });
     return res.end(JSON.stringify({ tokens, count: tokens.length }));
   }
   

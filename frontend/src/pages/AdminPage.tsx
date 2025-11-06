@@ -96,6 +96,7 @@ export function AdminPage() {
           <TokenList
             apiClient={apiClient}
             refreshTrigger={refreshTrigger}
+            baseUrl={baseUrl}
           />
         </div>
       </main>

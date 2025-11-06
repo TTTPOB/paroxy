@@ -6,9 +6,10 @@ import { formatDateTime, formatTime, copyToClipboard } from '../utils/formatters
 interface TokenListProps {
   apiClient: ApiClient;
   refreshTrigger?: number;
+  baseUrl: string;
 }
 
-export function TokenList({ apiClient, refreshTrigger }: TokenListProps) {
+export function TokenList({ apiClient, refreshTrigger, baseUrl }: TokenListProps) {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,16 @@ export function TokenList({ apiClient, refreshTrigger }: TokenListProps) {
 
   const handleCopyToken = (token: string) => {
     copyToClipboard(token);
+  };
+
+  const handleCopyPrompt = (token: string) => {
+    const prompt = apiClient.generatePromptTemplate(token, baseUrl);
+    copyToClipboard(prompt);
+  };
+
+  const handleCopyProxyUrl = (token: string) => {
+    const url = apiClient.generateProxyUrl(token, 'https://example.com');
+    copyToClipboard(url);
   };
 
   const isExpired = (expiresAt: number) => {
@@ -117,12 +128,26 @@ export function TokenList({ apiClient, refreshTrigger }: TokenListProps) {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleCopyToken(token.token)}
-                    className="px-3 py-1 text-sm text-primary-600 hover:text-primary-700 border border-primary-200 rounded hover:bg-primary-50 whitespace-nowrap"
-                  >
-                    复制
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleCopyToken(token.token)}
+                      className="px-3 py-1 text-sm text-primary-600 hover:text-primary-700 border border-primary-200 rounded hover:bg-primary-50 whitespace-nowrap"
+                    >
+                      复制令牌
+                    </button>
+                    <button
+                      onClick={() => handleCopyPrompt(token.token)}
+                      className="px-3 py-1 text-sm text-green-600 hover:text-green-700 border border-green-200 rounded hover:bg-green-50 whitespace-nowrap"
+                    >
+                      复制提示词
+                    </button>
+                    <button
+                      onClick={() => handleCopyProxyUrl(token.token)}
+                      className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 rounded hover:bg-blue-50 whitespace-nowrap"
+                    >
+                      复制示例
+                    </button>
+                  </div>
                 </div>
               </div>
             );

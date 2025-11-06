@@ -5,7 +5,12 @@
   "main": "proxy.js",
   "scripts": {
     "start": "node proxy.js",
-    "dev": "node proxy.js"
+    "dev": "node proxy.js",
+    "frontend:install": "cd frontend && pnpm install",
+    "frontend:dev": "cd frontend && pnpm dev",
+    "frontend:build": "cd frontend && pnpm build",
+    "frontend:preview": "cd frontend && pnpm preview",
+    "build": "pnpm frontend:build"
   },
   "keywords": ["proxy", "unblocker", "academic", "reverse-proxy"],
   "author": "",

@@ -1,6 +1,7 @@
 const http = require('http');
 const https = require('https');
 const url = require('url');
+const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const Unblocker = require('unblocker');
@@ -186,25 +187,59 @@ const server = http.createServer((req, res) => {
     }));
   }
   
+  // 检查是否是访问前端静态资源（JS、CSS、图片等）
+  if (pathname.startsWith('/assets/') || pathname.endsWith('.js') || pathname.endsWith('.css') || pathname.endsWith('.ico') || pathname.endsWith('.svg') || pathname.endsWith('.png') || pathname.endsWith('.jpg') || pathname.endsWith('.woff') || pathname.endsWith('.woff2')) {
+    const frontendDistPath = './frontend/dist';
+    const filePath = path.join(frontendDistPath, pathname);
+
+    // 检查文件是否存在
+    if (fs.existsSync(filePath)) {
+      const ext = path.extname(filePath);
+      const contentTypes = {
+        '.js': 'application/javascript',
+        '.css': 'text/css',
+        '.html': 'text/html',
+        '.ico': 'image/x-icon',
+        '.svg': 'image/svg+xml',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.woff': 'font/woff',
+        '.woff2': 'font/woff2',
+      };
+      const contentType = contentTypes[ext] || 'application/octet-stream';
+
+      try {
+        const content = fs.readFileSync(filePath);
+        res.writeHead(200, {'Content-Type': contentType});
+        return res.end(content);
+      } catch (error) {
+        logger.error(`Failed to read static file ${filePath}:`, error.message);
+      }
+    }
+  }
+
   // 管理界面路由 - 需要admin token认证
   if (pathname === '/admin' || pathname === '/admin/') {
     const adminToken = req.headers['x-admin-token'] || parsedUrl.query.admin_token;
-    
-    // 如果没有提供admin token，显示登录页面
-    if (!adminToken) {
-      try {
-        const adminHtml = fs.readFileSync('./public/admin.html', 'utf8');
-        res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
-        return res.end(adminHtml);
-      } catch (error) {
-        logger.error('Failed to read admin.html:', error.message);
-        res.writeHead(500, {'Content-Type': 'text/plain'});
-        return res.end('Internal Server Error');
-      }
-    }
-    
+
     // 验证admin token
-    if (!cfg.admin_token.includes(adminToken)) {
+    if (!adminToken || !cfg.admin_token.includes(adminToken)) {
+      const frontendIndexPath = './frontend/dist/index.html';
+
+      // 如果前端已构建，尝试读取index.html
+      if (fs.existsSync(frontendIndexPath)) {
+        try {
+          let indexHtml = fs.readFileSync(frontendIndexPath, 'utf8');
+          // 对于未认证用户，返回最小化的HTML
+          res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+          return res.end(indexHtml);
+        } catch (error) {
+          logger.error('Failed to read index.html:', error.message);
+        }
+      }
+
+      // 如果前端未构建，回退到简单的HTML页面
       res.writeHead(401, {'Content-Type': 'text/html; charset=utf-8'});
       return res.end(`
         <!DOCTYPE html>
@@ -212,41 +247,79 @@ const server = http.createServer((req, res) => {
         <head>
           <title>访问被拒绝</title>
           <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-            .error { color: #d32f2f; background: #ffebee; padding: 20px; border-radius: 5px; }
-            a { color: #1976d2; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            .error-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 500px; width: 90%; }
+            .error { color: #d32f2f; margin-bottom: 20px; }
+            h1 { font-size: 28px; margin-bottom: 16px; color: #333; }
+            p { color: #666; line-height: 1.6; margin-bottom: 12px; }
+            code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+            .hint { background: #fff3cd; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107; margin-top: 16px; }
           </style>
         </head>
         <body>
-          <div class="error">
-            <h1>访问被拒绝</h1>
-            <p>提供的管理员令牌无效。</p>
-            <p><a href="/admin">返回登录页面</a></p>
+          <div class="error-card">
+            <div class="error">
+              <h1>🔒 访问被拒绝</h1>
+            </div>
+            <p>请在 URL 中包含有效的管理员令牌。</p>
+            <div class="hint">
+              <strong>正确格式：</strong><br>
+              <code>${req.headers.host || 'localhost'}/admin?admin_token=你的管理员令牌</code>
+            </div>
           </div>
         </body>
         </html>
       `);
     }
-    
+
     // 如果admin token有效，显示管理界面
-    try {
-      let adminHtml = fs.readFileSync('./public/admin.html', 'utf8');
-      // 在HTML中注入admin token，这样前端就不需要再次输入
-      adminHtml = adminHtml.replace(
-        '<script>',
-        `<script>
-          window.adminToken = '${adminToken}';
-          window.serverUrl = 'http://localhost:${cfg.port}';
-        `
-      );
-      res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
-      return res.end(adminHtml);
-    } catch (error) {
-      logger.error('Failed to read admin.html:', error.message);
-      res.writeHead(500, {'Content-Type': 'text/plain'});
-      return res.end('Internal Server Error');
+    const frontendIndexPath = './frontend/dist/index.html';
+    if (fs.existsSync(frontendIndexPath)) {
+      try {
+        const indexHtml = fs.readFileSync(frontendIndexPath, 'utf8');
+        res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+        return res.end(indexHtml);
+      } catch (error) {
+        logger.error('Failed to read index.html:', error.message);
+      }
     }
+
+    // 如果前端未构建，fallback到简单HTML
+    res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+    return res.end(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Webpage Reverse Proxy</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+          .card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 600px; width: 90%; text-align: center; }
+          h1 { font-size: 32px; margin-bottom: 16px; color: #333; }
+          p { color: #666; line-height: 1.6; margin-bottom: 12px; }
+          .status { background: #e3f2fd; padding: 16px; border-radius: 6px; margin: 20px 0; }
+          .status h2 { font-size: 20px; margin-bottom: 8px; color: #1976d2; }
+          code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>🚀 Webpage Reverse Proxy</h1>
+          <p>服务器正在运行，但前端尚未构建完成。</p>
+          <div class="status">
+            <h2>请先构建前端：</h2>
+            <p><code>cd frontend && pnpm install && pnpm build</code></p>
+          </div>
+          <p>然后刷新页面即可使用管理界面。</p>
+        </div>
+      </body>
+      </html>
+    `);
   }
   
   // 管理接口：生成 Token
@@ -264,9 +337,10 @@ const server = http.createServer((req, res) => {
     
     const ttl = parseInt(parsedUrl.query.expires_after) || cfg.default_ttl;
     const token = crypto.randomBytes(16).toString('hex');
-    const expiry = Date.now() + ttl * 1000;
-    
-    userTokens.set(token, { expiry });
+    const now = Date.now();
+    const expiry = now + ttl * 1000;
+
+    userTokens.set(token, { expiry, created_at: now });
     
     logger.token(`Generated token: ${token} (expires in ${ttl}s)`);
     
@@ -278,8 +352,7 @@ const server = http.createServer((req, res) => {
     });
     return res.end(JSON.stringify({
       token,
-      expires_in: ttl,
-      expires_at: new Date(expiry).toISOString()
+      expires_at: Math.floor(expiry / 1000)
     }));
   }
   
@@ -300,9 +373,9 @@ const server = http.createServer((req, res) => {
     const now = Date.now();
     for (const [token, data] of userTokens.entries()) {
       tokens.push({
-        token: token.substring(0, 8) + '...',
-        expires_in: Math.max(0, Math.floor((data.expiry - now) / 1000)),
-        expires_at: new Date(data.expiry).toISOString()
+        token: token,
+        created_at: Math.floor(data.created_at / 1000),
+        expires_at: Math.floor(data.expiry / 1000)
       });
     }
     
